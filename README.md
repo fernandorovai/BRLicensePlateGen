@@ -38,11 +38,18 @@ For external data usage, instantiate the class as follows:
 
 from plateGenerator import plateGenerator
 plateGen = PlateGenerator()
-plateBoxes, plateImgs = plateGen.generatePlates(numOfPlates=numOfPlates)
+plates = plateGen.generatePlates(numOfPlates=numOfPlates)
 
-- Contents
-plateBoxes = (xMin, yMin, xMax, yMax, tagValue)
-plateImgs  = set of generated images
+- Plates dict structure
+plates = {
+          "plateIdx": idx,
+          "plateImg": finalImg,
+          "plateBoxes": [(xMin, yMin, xMax, yMax, tagValue)]
+         }
+
+plateIdx  = generated plate id
+plateImg  = generated plate image
+
 ```
 ## Built With
 

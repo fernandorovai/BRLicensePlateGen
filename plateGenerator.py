@@ -103,27 +103,28 @@ class PlateGenerator:
         plt.show()
 
     def generatePlates(self, numOfPlates):
-        plateImgs  = []
-        plateBoxes = []
+        plates     = []
 
         for idx in range(0, numOfPlates):
             plateSample = self.plateIm.copy()
             lettersImg  = self.generateLetters(plateSample)
             dashImg     = self.generateDash(lettersImg)
-            numbersImg  = self.generateNumbers(dashImg)
+            finalImg  = self.generateNumbers(dashImg)
 
-            plateImgs.append(numbersImg)
-            plateBoxes.append(self.bboxes)
+            plates.append({"plateIdx": idx, "plateImg": finalImg, "plateBoxes": self.bboxes})
 
+            # Visualize plate
             if self.visualizePlates:
-                self.visualizePlate(numbersImg)
+                self.visualizePlate(finalImg)
 
+            # Reset references (width, height and boxes)
             self.resetReferences()
 
+        # Show histogram
         if self.showStatistics:
             self.visualizeStatistics()
 
-        return plateBoxes, plateImgs
+        return plates
 
     def visualizeStatistics(self):
         plt.figure()
@@ -136,8 +137,8 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         numOfPlates = int(sys.argv[1])
         if numOfPlates > 0:
-            plateGen = PlateGenerator(showPlates=False)
-            plateBoxes, plateImgs = plateGen.generatePlates(numOfPlates=numOfPlates)
+            plateGen = PlateGenerator(showPlates=True)
+            plates = plateGen.generatePlates(numOfPlates=numOfPlates)
     else:
         print("You should specify the number of plates")
 

@@ -1,7 +1,7 @@
 # BR License Plate Generator
 Generates artificial vehicle license plate following the Brazilian traffic department design patterns
 
-![plategenexample](https://user-images.githubusercontent.com/3229701/38843794-0d3db238-41c7-11e8-8fad-c70c19f73270.png)
+![plategenexamplewhist](https://user-images.githubusercontent.com/3229701/38894606-17408808-4264-11e8-864f-5d8da4140543.png)
 
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
@@ -51,6 +51,28 @@ plateIdx  = generated plate id
 plateImg  = generated plate image
 
 ```
+
+## Generating dataset file
+Currently only tensorflow (TFRecord) export format is available.
+```
+$ cd BRLicensePlateGen
+$ python datasetCreator.py
+
+----------------------------------------------------------
+Expected output:
+
+How many plates do you want to generate?
+Number of plates:5000
+0 - Tensorflow
+1 - YOLOV2
+What is the model? (e.g: 0 or 1): 0
+What is the output path? /home/user/BRLicensePlateGen/datasetFile
+Want to see generated plates? (y/n): n
+------------------------------------------------------------------
+Generating TensorFlow Dataset with (5000) license plates
+TensorFlow dataset created successfully! Process took 19.082 seconds
+```
+
 ## Built With
 
 * [Pip](https://pip.pypa.io/en/stable/) - Dependency Management

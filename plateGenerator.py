@@ -7,7 +7,7 @@ import sys
 import collections
 
 class PlateGenerator:
-    def __init__(self, exportImage=False, exportBox=False, showPlates=True, showStatistics=True):
+    def __init__(self, showPlates=True, showStatistics=True):
         self.dataFolder      = 'data'
         self.letters         = ["A", "B", "C", "D", "E", "F", "G",
                                 "H", "I", "J", "K", "L", "M", "N",
@@ -31,8 +31,6 @@ class PlateGenerator:
         self.widthRef               = 30
         self.heightRef              = 55
 
-        self.exportImage            = exportImage
-        self.exportBox              = exportBox
         self.showStatistics         = showStatistics
         self.visualizePlates        = showPlates
         self.plateSample            = os.path.join(self.dataFolder, 'plateSample01.jpg')

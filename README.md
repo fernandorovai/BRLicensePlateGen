@@ -3,8 +3,24 @@ Generates artificial vehicle license plate following the Brazilian traffic depar
 
 ![plategendemo](https://user-images.githubusercontent.com/3229701/39006098-71177a7e-43d8-11e8-9533-a336a7a2e866.png)
 
+
+## Features
+- Random plate Generator
+- Annotated characters
+- Data Augmentation
+- Balanced character dataset
+- TensorFlow TFRecord generator
+
+```
+Letters: A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, X, Y, W, Z
+Numbers: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+Special: -
+```
+
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+
+
 
 ### Prerequisites
 ```
@@ -59,6 +75,7 @@ plateImg  = generated plate image
 Currently only tensorflow (TFRecord) export format is available.
 - **Augmenting data:** rotating, scaling, adding gaussian blur, noise
 - **Balancing data:** keep the number of characters balanced. It may result some images with a few bounding boxes.
+- **LabelMap:** A label_map.pbtxt is automatically created with all different classes in the dataset.
 
 ```
 $ cd BRLicensePlateGen

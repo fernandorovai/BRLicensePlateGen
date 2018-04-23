@@ -114,7 +114,7 @@ class PlateGenerator:
         plt.imshow(image)
         plt.show()
 
-    def generatePlates(self, numOfPlates):
+    def generatePlates(self, numOfPlates, testSet=False):
         print("------------------------------------------------------------------")
         print("Generating Artficial Data...")
         startTime = time.time()
@@ -142,7 +142,8 @@ class PlateGenerator:
 
         # Perform data augmentation
         if self.augmentation:
-            plates = self.augmentImgs(plates)
+            if testSet: plates = self.augmentImgsTest(plates)
+            else:       plates = self.augmentImgs(plates)
 
         elapsed = round((time.time() - startTime),3)
 
@@ -155,6 +156,46 @@ class PlateGenerator:
         plt.bar(self.statistics.keys(), self.statistics.values(), 1, color='g')
         plt.show()
 
+    def augmentImgsTest(self, plates):
+        augPlates = []
+        for plate in plates:
+            plateIdx = plate["plateIdx"]
+            plateImg = np.asarray(plate['plateImg'])
+            plateBoxes = plate['plateBoxes']
+            bbs = []
+            seq = iaa.Sequential([
+                iaa.Sometimes(0.9, iaa.GaussianBlur(sigma=(0, 0.7))),
+                iaa.ContrastNormalization((0.75, 2.0)),
+                iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.2 * 255), per_channel=0.6),
+                iaa.Multiply((0.8, 1.2), per_channel=0.2),
+                iaa.Sometimes(0.8, iaa.Affine(rotate=(-10, 15), shear=(-8, 8))),
+                iaa.Sometimes(0.8, iaa.Affine(rotate=(-5, 7), shear=(-13, 15))),
+                iaa.Sometimes(0.8, iaa.Affine(scale=(0.7, 0.7))),
+                iaa.Sometimes(0.8, iaa.Affine(shear=(-3, 3)))], random_order=True)
+            seq_det = seq.to_deterministic()
+
+            for box in plateBoxes:
+                bbs.append(ia.BoundingBox(box[0], box[1], box[2], box[3]))
+
+            bbsOnImage = ia.BoundingBoxesOnImage(bbs, shape=plateImg.shape)
+            imageAug = seq_det.augment_images([plateImg])[0]
+            bboxAug = seq_det.augment_bounding_boxes([bbsOnImage])[0]
+            bboxAug = bboxAug.remove_out_of_image().cut_out_of_image()
+
+            finalImg = Image.fromarray(imageAug)
+            bboxAugFormatted = []
+            for idx, box in enumerate(bboxAug.bounding_boxes):
+                bboxAugFormatted.append((box.x1, box.y1, box.x2, box.y2, plateBoxes[idx][4]))
+
+            augPlates.append(
+                {"plateIdx": plateIdx, "plateImg": Image.fromarray(imageAug), "plateBoxes": bboxAugFormatted})
+
+            # Visualize plate
+            if self.visualizePlates:
+                self.visualizePlate(finalImg)
+
+        return augPlates
+
 
     def augmentImgs(self, plates):
         augPlates = []
@@ -164,13 +205,14 @@ class PlateGenerator:
             plateBoxes  = plate['plateBoxes']
             bbs         = []
             seq         = iaa.Sequential([
-                          iaa.Sometimes(0.5,iaa.GaussianBlur(sigma=(0, 0.5))),
-                          iaa.ContrastNormalization((0.75, 1.5)),
-                          iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.07 * 255), per_channel=0.5),
+                          iaa.Sometimes(0.9,iaa.GaussianBlur(sigma=(0, 0.7))),
+                          iaa.ContrastNormalization((0.75, 1.9)),
+                          iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.1 * 255), per_channel=0.6),
                           iaa.Multiply((0.8, 1.2), per_channel=0.2),
-                          iaa.Sometimes(0.5, iaa.Affine(rotate=(-10, 10), shear=(-8, 8))),
-                          iaa.Sometimes(0.5, iaa.Affine(rotate=(-15, 15), shear=(-15, 15))),
-                          iaa.Sometimes(0.5, iaa.Affine(shear=(-3, 3)))], random_order=True)
+                          iaa.Sometimes(0.8, iaa.Affine(rotate=(-5, 5), shear=(-8, 8))),
+                          iaa.Sometimes(0.8, iaa.Affine(rotate=(-7, 7), shear=(-3, 3))),
+                          iaa.Sometimes(0.8, iaa.Affine(scale=(0.6, 0.6))),
+                iaa.Sometimes(0.8, iaa.Affine(shear=(-3, 3)))], random_order=True)
             seq_det     = seq.to_deterministic()
 
             for box in plateBoxes:

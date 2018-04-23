@@ -6,11 +6,11 @@ from time import time
 import matplotlib.pyplot as plt
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True):
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, testSet=False):
         plateGen            = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
         self.balanceData    = balanceData
         self.showStatistics = showStatistics
-        self.plates         = plateGen.generatePlates(numOfPlates=numOfPlates)
+        self.plates         = plateGen.generatePlates(numOfPlates=numOfPlates, testSet=testSet)
         self.classes        = { "A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6,
                                 "G": 7, "H": 8, "I": 9, "J":10, "K":11, "L":12,
                                 "M":13, "N":14, "O":15, "P":16, "Q":17, "R":18,
@@ -129,6 +129,7 @@ if __name__ == '__main__':
     output       = input("What is the output path? ")
     augmentation = input("Want to augment the dataset? (y/n): ")
     balanced     = input("Want to balance the data? (You may have images with few annotations) (y/n): ")
+    testSet      = input("Want to generate the test dataset as well? (y/n): ")
     showPlates   = input("Want to see generated plates? (y/n): ")
 
     if int(numOfPlates) > 0 and (model == 0 or model == 1) and output != "":
@@ -141,10 +142,23 @@ if __name__ == '__main__':
         if augmentation == ('y' or 'Y'): augmentation = True
         else: augmentation = False
 
+        if testSet == ('y' or 'Y'): testSet = True
+        else: testSet = False
+
+        # Create train set
         datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation)
 
         if   model == 0:datasetCreator.createTensorFlowDataset(output)
         elif model == 1:datasetCreator.createYOLOV2Dataset()
         else: print("Model not found")
+
+        if testSet:
+            output = output + 'Test'
+            datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, testSet=True)
+
+            if model == 0:datasetCreator.createTensorFlowDataset(output)
+            elif model == 1:datasetCreator.createYOLOV2Dataset()
+            else:print("Model not found")
+
     else:
         print("Sorry, you chose something that does not match the requirements!")

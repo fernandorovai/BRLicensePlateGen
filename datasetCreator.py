@@ -6,7 +6,7 @@ from time import time
 import matplotlib.pyplot as plt
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, testSet=False):
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=False, augmentation=True, testSet=False):
         plateGen            = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
         self.balanceData    = balanceData
         self.showStatistics = showStatistics
@@ -21,7 +21,6 @@ class DatasetCreator:
         statistics = plateGen.getStatistics()
         self.maxCharOccurrence = min(val for val in statistics.values() if val > 0)
         self.occurrenceControl = statistics.fromkeys(statistics, 1)
-        print(self.occurrenceControl)
 
     def createYOLOV2Dataset(self):
         # To be defined

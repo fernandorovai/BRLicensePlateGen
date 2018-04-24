@@ -116,7 +116,7 @@ class PlateGenerator:
 
     def generatePlates(self, numOfPlates, testSet=False):
         print("------------------------------------------------------------------")
-        print("Generating Artficial Data...")
+        print("Generating Artificial Data...")
         startTime = time.time()
 
         plates     = []

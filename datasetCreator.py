@@ -1,23 +1,26 @@
 #This script generates dataset based on a specific framework structure
 import io
+import os
+
 from plateGenerator import PlateGenerator
 from TFRecordWriter import TFRecordWriter, TFExample
 from time import time
 import matplotlib.pyplot as plt
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=False, augmentation=True, testSet=False):
-        plateGen            = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
-        self.balanceData    = balanceData
-        self.showStatistics = showStatistics
-        self.plates         = plateGen.generatePlates(numOfPlates=numOfPlates, testSet=testSet)
-        self.classes        = { "A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6,
-                                "G": 7, "H": 8, "I": 9, "J":10, "K":11, "L":12,
-                                "M":13, "N":14, "O":15, "P":16, "Q":17, "R":18,
-                                "S":19, "T":20, "U":21, "V":22, "Y":23, "W":24,
-                                "X":25, "Z":26, "0":27, "1":28, "2":29, "3":30,
-                                "4":31, "5":32, "6":33, "7":34, "8":35, "9":36,
-                                "-":37}
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=False, augmentation=True, testSet=False, lbFile = False):
+        plateGen                = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
+        self.balanceData        = balanceData
+        self.showStatistics     = showStatistics
+        self.labelFile          = lbFile
+        self.plates             = plateGen.generatePlates(numOfPlates=numOfPlates, testSet=testSet)
+        self.classes            = { "A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6,
+                                    "G": 7, "H": 8, "I": 9, "J":10, "K":11, "L":12,
+                                    "M":13, "N":14, "O":15, "P":16, "Q":17, "R":18,
+                                    "S":19, "T":20, "U":21, "V":22, "Y":23, "W":24,
+                                    "X":25, "Z":26, "0":27, "1":28, "2":29, "3":30,
+                                    "4":31, "5":32, "6":33, "7":34, "8":35, "9":36,
+                                    "-":37}
         statistics = plateGen.getStatistics()
         self.maxCharOccurrence = min(val for val in statistics.values() if val > 0)
         self.occurrenceControl = statistics.fromkeys(statistics, 1)
@@ -39,7 +42,6 @@ class DatasetCreator:
             plateIdx         = plate['plateIdx']
             plateImg         = plate['plateImg']
             plateBoxes       = plate['plateBoxes']
-            plateFilename    = ("plate_%s.jpg" % str(plateIdx).zfill(7)).encode('utf-8')
             byteStream       = io.BytesIO()
             plateImg.save(byteStream, 'jpeg')
             imageBytes       = byteStream.getvalue()
@@ -53,6 +55,7 @@ class DatasetCreator:
             classes          = []  # List of integer class id of bounding box (1 per box)
             encodedImageData = imageBytes
             imageFormat      = b'jpeg'
+            groundTruth      = ''
 
             for box in plateBoxes:
                 if int(self.occurrenceControl[str(box[4])]) > int(self.maxCharOccurrence) and self.balanceData == True:
@@ -62,14 +65,14 @@ class DatasetCreator:
                 yMin = box[1]
                 xMax = box[2]
                 yMax = box[3]
-
+                char = box[4]
                 xMins.append(float(xMin) / float(width))
                 yMins.append(float(yMin) / float(height))
                 xMaxs.append(float(xMax) / float(width))
                 yMaxs.append(float(yMax) / float(height))
                 classesText.append(str(box[4]).encode('utf-8'))
                 classes.append(self.classes[str(box[4])])
-
+                groundTruth += str(char)
                 if not any(el['classID'] == self.classes[str(box[4])] for el in diffClasses):
                     diffClasses.append({"classID":self.classes[str(box[4])] , "className": str(box[4])})
 
@@ -84,7 +87,7 @@ class DatasetCreator:
             tfRecordExample                  = TFExample()
             tfRecordExample.width            = width
             tfRecordExample.height           = height
-            tfRecordExample.filename         = plateFilename
+            tfRecordExample.filename         = ("%s" % groundTruth).encode('utf-8')
             tfRecordExample.sourceID         = (str(plateIdx).zfill(7)).encode('utf-8')
             tfRecordExample.encodedImageData = encodedImageData
             tfRecordExample.imageFormat      = imageFormat
@@ -98,13 +101,15 @@ class DatasetCreator:
             tfExample = tfRecordGen.createTfExample(tfRecordExample)
             tfRecordGen.appendExampleToTfStream(tfExample)
 
-        # sort label map and append to the pbtxt file
-        diffClasses = sorted(diffClasses, key=lambda d: d['classID'], reverse=False)
-        self.createTFLabelMap(diffClasses, tfLabelMapFilename)
+        # Create pbtxt if specified
+        if self.labelFile:
+            # sort label map and append to the pbtxt file
+            diffClasses = sorted(diffClasses, key=lambda d: d['classID'], reverse=False)
+            self.createTFLabelMap(diffClasses, tfLabelMapFilename)
 
         tfRecordGen.closeTfStream()
         elapsed = round((time() - startTime),3)
-        print("TensorFlow dataset created successfully! Process took %s seconds" % (str(elapsed)))
+        print("TensorFlow dataset created successfully! - %s - Process took %s seconds" % (str(tfRecordPath), str(elapsed)))
         if self.showStatistics:
             self.visualizeStatistics()
 
@@ -123,15 +128,19 @@ class DatasetCreator:
 
 if __name__ == '__main__':
 
+    path         = os.getcwd()
     numOfPlates  = int(input("How many plates do you want to generate? \nNumber of plates:"))
     model        = int(input("0 - Tensorflow \n1 - YOLOV2\nWhat is the model? (e.g: 0 or 1): "))
-    output       = input("What is the output path? ")
+    output       = input("What is the set name? ")
     augmentation = input("Want to augment the dataset? (y/n): ")
     balanced     = input("Want to balance the data? (You may have images with few annotations) (y/n): ")
     testSet      = input("Want to generate the test dataset as well? (y/n): ")
     showPlates   = input("Want to see generated plates? (y/n): ")
+    lblFile      = input("Want to generate the label pbtxt file? (y/n): ")
 
     if int(numOfPlates) > 0 and (model == 0 or model == 1) and output != "":
+        output = os.path.join(path, output)
+
         if balanced == ('y' or 'Y'): balanced = True
         else: balanced = False
 
@@ -143,6 +152,9 @@ if __name__ == '__main__':
 
         if testSet == ('y' or 'Y'): testSet = True
         else: testSet = False
+
+        if lblFile == ('y' or 'Y'): lblFile = True
+        else: lblFile = False
 
         # Create train set
         datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation)

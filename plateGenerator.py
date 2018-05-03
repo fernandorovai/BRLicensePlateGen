@@ -15,19 +15,18 @@ class PlateGenerator:
     def __init__(self, showPlates=True, showStatistics=True, augmentation=True):
         self.dataFolder      = 'data'
         self.letters         = ["A", "B", "C", "D", "E", "F", "G",
-                                "H", "I", "J", "K", "L", "M", "N",
-                                "O", "P", "Q", "R", "S", "T", "U",
+                                "H", "I1", "J", "K", "L", "M", "N",
+                                "O0", "P", "Q", "R", "S", "T", "U",
                                 "V", "Y", "W", "X", "Z"]
 
         self.statistics      = collections.OrderedDict([("A",0), ("B",0), ("C",0), ("D",0), ("E",0),
-                                                        ("F",0), ("G",0), ("H",0), ("I",0), ("J",0),
-                                                        ("K",0), ("L",0), ("M",0), ("N",0), ("O",0),
+                                                        ("F",0), ("G",0), ("H",0), ("I1",0), ("J",0),
+                                                        ("K",0), ("L",0), ("M",0), ("N",0), ("O0",0),
                                                         ("P",0), ("Q",0), ("R",0), ("S",0), ("T",0),
                                                         ("U",0), ("V",0), ("Y",0), ("W",0), ("X",0),
-                                                        ("Z",0), ("0",0), ("1",0), ("2",0), ("3",0),
-                                                        ("4",0), ("5",0), ("6",0), ("7",0), ("8",0),
-                                                        ("9",0), ("-",0)])
-        self.numbers         = [x for x in range (0, 10)]
+                                                        ("Z",0), ("2",0), ("3",0), ("4",0), ("5",0),
+                                                        ("6",0), ("7",0), ("8",0), ("9",0), ("-",0)])
+        self.numbers         = [x for x in range (2, 10)] #Excluding 0 and 1, same class as O and I
         self.bboxes          = []
         self.nLetters        = 3
         self.nNumbers        = 4

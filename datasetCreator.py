@@ -8,19 +8,18 @@ from time import time
 import matplotlib.pyplot as plt
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=False, augmentation=True, testSet=False, lbFile = False):
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, testSet=False, lbFile = False):
         plateGen                = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
         self.balanceData        = balanceData
         self.showStatistics     = showStatistics
         self.labelFile          = lbFile
         self.plates             = plateGen.generatePlates(numOfPlates=numOfPlates, testSet=testSet)
-        self.classes            = { "A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6,
-                                    "G": 7, "H": 8, "I": 9, "J":10, "K":11, "L":12,
-                                    "M":13, "N":14, "O":15, "P":16, "Q":17, "R":18,
-                                    "S":19, "T":20, "U":21, "V":22, "Y":23, "W":24,
-                                    "X":25, "Z":26, "0":27, "1":28, "2":29, "3":30,
-                                    "4":31, "5":32, "6":33, "7":34, "8":35, "9":36,
-                                    "-":37}
+        self.classes            = { "A": 1, "B": 2, "C":  3,  "D": 4, "E": 5, "F": 6,
+                                    "G": 7, "H": 8, "I1": 9,  "J":10, "K":11, "L":12,
+                                    "M":13, "N":14, "O0":15,  "P":16, "Q":17, "R":18,
+                                    "S":19, "T":20, "U": 21,  "V":22, "Y":23, "W":24,
+                                    "X":25, "Z":26, "2": 27,  "3":28, "4":29, "5":30,
+                                    "6":31, "7":32, "8": 33,  "9":34, "-":35}
         statistics = plateGen.getStatistics()
         self.maxCharOccurrence = min(val for val in statistics.values() if val > 0)
         self.occurrenceControl = statistics.fromkeys(statistics, 1)
@@ -157,7 +156,7 @@ if __name__ == '__main__':
         else: lblFile = False
 
         # Create train set
-        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation)
+        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, lbFile=lblFile)
 
         if   model == 0:datasetCreator.createTensorFlowDataset(output)
         elif model == 1:datasetCreator.createYOLOV2Dataset()
@@ -165,7 +164,7 @@ if __name__ == '__main__':
 
         if testSet:
             output = output + 'Test'
-            datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, testSet=True)
+            datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, testSet=True, lbFile=lblFile)
 
             if model == 0:datasetCreator.createTensorFlowDataset(output)
             elif model == 1:datasetCreator.createYOLOV2Dataset()

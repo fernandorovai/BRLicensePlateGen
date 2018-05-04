@@ -15,18 +15,19 @@ class PlateGenerator:
     def __init__(self, showPlates=True, showStatistics=True, augmentation=True):
         self.dataFolder      = 'data'
         self.letters         = ["A", "B", "C", "D", "E", "F", "G",
-                                "H", "I1", "J", "K", "L", "M", "N",
-                                "O0", "P", "Q", "R", "S", "T", "U",
+                                "H", "I", "J", "K", "L", "M", "N",
+                                "O", "P", "Q", "R", "S", "T", "U",
                                 "V", "Y", "W", "X", "Z"]
 
         self.statistics      = collections.OrderedDict([("A",0), ("B",0), ("C",0), ("D",0), ("E",0),
-                                                        ("F",0), ("G",0), ("H",0), ("I1",0), ("J",0),
-                                                        ("K",0), ("L",0), ("M",0), ("N",0), ("O0",0),
+                                                        ("F",0), ("G",0), ("H",0), ("I",0), ("J",0),
+                                                        ("K",0), ("L",0), ("M",0), ("N",0), ("O",0),
                                                         ("P",0), ("Q",0), ("R",0), ("S",0), ("T",0),
                                                         ("U",0), ("V",0), ("Y",0), ("W",0), ("X",0),
-                                                        ("Z",0), ("2",0), ("3",0), ("4",0), ("5",0),
-                                                        ("6",0), ("7",0), ("8",0), ("9",0), ("-",0)])
-        self.numbers         = [x for x in range (2, 10)] #Excluding 0 and 1, same class as O and I
+                                                        ("Z",0), ("0",0), ("1",0), ("2",0), ("3",0),
+                                                        ("4",0), ("5",0), ("6",0), ("7",0), ("8",0),
+                                                        ("9",0), ("-",0)])
+        self.numbers         = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] #Excluding 0 and 1, same class as O and I
         self.bboxes          = []
         self.nLetters        = 3
         self.nNumbers        = 4
@@ -53,7 +54,14 @@ class PlateGenerator:
         # Adding letters
         for _ in range(0, self.nLetters):
             randomChar = random.choice(self.letters)
-            char = Image.open(os.path.join(self.dataFolder, "%s.png" % str(randomChar)))
+            file = randomChar
+            if randomChar == "I":
+                file = "I1"
+
+            if randomChar == "O":
+                file = "O0"
+
+            char = Image.open(os.path.join(self.dataFolder, "%s.png" % str(file)))
             charW, charH = char.size
 
             # Append box according to widthRef + charW
@@ -77,7 +85,14 @@ class PlateGenerator:
         # Adding numbers
         for _ in range(0, self.nNumbers):
             randomNum = random.choice(self.numbers)
-            number = Image.open(os.path.join(self.dataFolder, "%s.png" % str(randomNum)))
+            file = randomNum
+            if randomNum == "1":
+                file = "I1"
+
+            if randomNum == "0":
+                file = "O0"
+
+            number = Image.open(os.path.join(self.dataFolder, "%s.png" % str(file)))
             numberW, numberH = number.size
 
             # Append box according to widthRef + numberW
@@ -113,18 +128,17 @@ class PlateGenerator:
         plt.imshow(image)
         plt.show()
 
-    def generatePlates(self, numOfPlates, testSet=False):
+    def generatePlates(self, numOfPlates, trainSet=False):
         print("------------------------------------------------------------------")
         print("Generating Artificial Data...")
         startTime = time.time()
-
         plates     = []
 
         for idx in range(0, numOfPlates):
             plateSample = self.plateIm.copy()
             lettersImg  = self.generateLetters(plateSample)
             dashImg     = self.generateDash(lettersImg)
-            finalImg  = self.generateNumbers(dashImg)
+            finalImg    = self.generateNumbers(dashImg)
 
             plates.append({"plateIdx": idx, "plateImg": finalImg, "plateBoxes": self.bboxes})
 
@@ -141,8 +155,8 @@ class PlateGenerator:
 
         # Perform data augmentation
         if self.augmentation:
-            if testSet: plates = self.augmentImgsTest(plates)
-            else:       plates = self.augmentImgs(plates)
+            if trainSet: plates = self.augmentImgs(plates)
+            else:        plates = self.augmentImgsTest(plates)
 
         elapsed = round((time.time() - startTime),3)
 
@@ -163,13 +177,11 @@ class PlateGenerator:
             plateBoxes = plate['plateBoxes']
             bbs = []
             seq = iaa.Sequential([
-                iaa.Sometimes(0.9, iaa.GaussianBlur(sigma=(0, 0.7))),
+                iaa.Sometimes(0.9, iaa.GaussianBlur(sigma=(0, 0.9))),
                 iaa.ContrastNormalization((0.75, 2.0)),
                 iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.2 * 255), per_channel=0.6),
                 iaa.Multiply((0.8, 1.2), per_channel=0.2),
-                iaa.Sometimes(0.8, iaa.Affine(rotate=(-10, 15), shear=(-8, 8))),
-                iaa.Sometimes(0.8, iaa.Affine(rotate=(-5, 7), shear=(-13, 15))),
-                iaa.Sometimes(0.8, iaa.Affine(scale=(0.7, 0.7))),
+                iaa.Sometimes(0.8, iaa.Affine(rotate=(-5, 7), shear=(-2, 10))),
                 iaa.Sometimes(0.8, iaa.Affine(shear=(-3, 3)))], random_order=True)
             seq_det = seq.to_deterministic()
 

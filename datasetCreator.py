@@ -8,12 +8,12 @@ from time import time
 import matplotlib.pyplot as plt
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, testSet=False, lbFile = False):
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, trainSet=False, lbFile = False):
         plateGen                = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
         self.balanceData        = balanceData
         self.showStatistics     = showStatistics
         self.labelFile          = lbFile
-        self.plates             = plateGen.generatePlates(numOfPlates=numOfPlates, testSet=testSet)
+        self.plates             = plateGen.generatePlates(numOfPlates=numOfPlates, trainSet=trainSet)
         self.classes            = { "A": 1, "B": 2, "C":  3,  "D": 4, "E": 5, "F": 6,
                                     "G": 7, "H": 8, "I1": 9,  "J":10, "K":11, "L":12,
                                     "M":13, "N":14, "O0":15,  "P":16, "Q":17, "R":18,
@@ -57,26 +57,33 @@ class DatasetCreator:
             groundTruth      = ''
 
             for box in plateBoxes:
-                if int(self.occurrenceControl[str(box[4])]) > int(self.maxCharOccurrence) and self.balanceData == True:
-                   continue
 
                 xMin = box[0]
                 yMin = box[1]
                 xMax = box[2]
                 yMax = box[3]
                 char = box[4]
+                groundTruth += str(char)
+
+                # increment occurrence counter
+                self.occurrenceControl[str(char)] +=1
+
+                if int(self.occurrenceControl[str(char)]) > int(self.maxCharOccurrence) and self.balanceData == True:
+                    continue
+
+                if char == "1" or char == "I":
+                    char = "I1"
+                elif char == "0" or char == "O":
+                    char = "O0"
+
                 xMins.append(float(xMin) / float(width))
                 yMins.append(float(yMin) / float(height))
                 xMaxs.append(float(xMax) / float(width))
                 yMaxs.append(float(yMax) / float(height))
-                classesText.append(str(box[4]).encode('utf-8'))
-                classes.append(self.classes[str(box[4])])
-                groundTruth += str(char)
-                if not any(el['classID'] == self.classes[str(box[4])] for el in diffClasses):
-                    diffClasses.append({"classID":self.classes[str(box[4])] , "className": str(box[4])})
-
-                # increment occurrence counter
-                self.occurrenceControl[str(box[4])] +=1
+                classesText.append(str(char).encode('utf-8'))
+                classes.append(self.classes[str(char)])
+                if not any(el['classID'] == self.classes[str(char)] for el in diffClasses):
+                    diffClasses.append({"classID":self.classes[str(char)] , "className": str(char)})
 
             # Avoid empty plates
             if len(classes) == 0:
@@ -131,9 +138,9 @@ if __name__ == '__main__':
     numOfPlates  = int(input("How many plates do you want to generate? \nNumber of plates:"))
     model        = int(input("0 - Tensorflow \n1 - YOLOV2\nWhat is the model? (e.g: 0 or 1): "))
     output       = input("What is the set name? ")
+    trainSet      = input("Is it a train set(y) or test set(n)? (y/n): ")
     augmentation = input("Want to augment the dataset? (y/n): ")
     balanced     = input("Want to balance the data? (You may have images with few annotations) (y/n): ")
-    testSet      = input("Want to generate the test dataset as well? (y/n): ")
     showPlates   = input("Want to see generated plates? (y/n): ")
     lblFile      = input("Want to generate the label pbtxt file? (y/n): ")
 
@@ -149,22 +156,22 @@ if __name__ == '__main__':
         if augmentation == ('y' or 'Y'): augmentation = True
         else: augmentation = False
 
-        if testSet == ('y' or 'Y'): testSet = True
-        else: testSet = False
+        if trainSet == ('y' or 'Y'): trainSet = True
+        else: trainSet = False
 
         if lblFile == ('y' or 'Y'): lblFile = True
         else: lblFile = False
 
         # Create train set
-        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, lbFile=lblFile)
+        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, trainSet=False, augmentation=augmentation, lbFile=lblFile)
 
         if   model == 0:datasetCreator.createTensorFlowDataset(output)
         elif model == 1:datasetCreator.createYOLOV2Dataset()
         else: print("Model not found")
 
-        if testSet:
+        if trainSet:
             output = output + 'Test'
-            datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, testSet=True, lbFile=lblFile)
+            datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, trainSet=True, lbFile=lblFile)
 
             if model == 0:datasetCreator.createTensorFlowDataset(output)
             elif model == 1:datasetCreator.createYOLOV2Dataset()

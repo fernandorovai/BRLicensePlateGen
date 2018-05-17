@@ -27,7 +27,7 @@ class PlateGenerator:
                                                         ("Z",0), ("0",0), ("1",0), ("2",0), ("3",0),
                                                         ("4",0), ("5",0), ("6",0), ("7",0), ("8",0),
                                                         ("9",0), ("-",0)])
-        self.numbers         = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] #Excluding 0 and 1, same class as O and I
+        self.numbers         = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
         self.bboxes          = []
         self.nLetters        = 3
         self.nNumbers        = 4
@@ -105,13 +105,14 @@ class PlateGenerator:
             self.statistics[str(randomNum)] +=1
         return image
 
-    def generateDash(self, image):
+    def generateDash(self, image, includeDash):
         # Adding dash
         dash = Image.open(os.path.join(self.dataFolder, "%s.png" % str("-")))
         dashW, dashH = dash.size
 
-        # Append box according to widthRef + numberW
-        self.bboxes.append(self.generateBox(dashW, dashH, "-"))
+        if includeDash:
+            # Append box according to widthRef + numberW
+            self.bboxes.append(self.generateBox(dashW, dashH, "-"))
 
         image.paste(dash, (self.widthRef, self.heightRef), dash)
         self.widthRef += dashW + self.charPadding
@@ -128,7 +129,7 @@ class PlateGenerator:
         plt.imshow(image)
         plt.show()
 
-    def generatePlates(self, numOfPlates, trainSet=False):
+    def generatePlates(self, numOfPlates, trainSet=True, includeDash=False):
         print("------------------------------------------------------------------")
         print("Generating Artificial Data...")
         startTime = time.time()
@@ -136,10 +137,9 @@ class PlateGenerator:
 
         for idx in range(0, numOfPlates):
             plateSample = self.plateIm.copy()
-            lettersImg  = self.generateLetters(plateSample)
-            dashImg     = self.generateDash(lettersImg)
-            finalImg    = self.generateNumbers(dashImg)
-
+            finalImg    = self.generateLetters(plateSample)
+            finalImg    = self.generateDash(finalImg, includeDash)
+            finalImg    = self.generateNumbers(finalImg)
             plates.append({"plateIdx": idx, "plateImg": finalImg, "plateBoxes": self.bboxes})
 
             # Visualize plate
@@ -216,14 +216,20 @@ class PlateGenerator:
             plateBoxes  = plate['plateBoxes']
             bbs         = []
             seq         = iaa.Sequential([
-                          iaa.Sometimes(0.9,iaa.GaussianBlur(sigma=(0, 0.7))),
+                          iaa.Sometimes(0.5,
+                              iaa.OneOf([iaa.GaussianBlur((0, 3.0)), # blur images with a sigma between 0 and 3.0
+                                         iaa.AverageBlur(k=(2, 7)), # blur image using local means with kernel sizes between 2 and 7
+                                         iaa.MedianBlur(k=(3, 11)), # blur image using local medians with kernel sizes between 2 and 7
+                                        ])),
                           iaa.ContrastNormalization((0.75, 1.9)),
                           iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.1 * 255), per_channel=0.6),
-                          iaa.Multiply((0.8, 1.2), per_channel=0.2),
-                          iaa.Sometimes(0.8, iaa.Affine(rotate=(-5, 5), shear=(-8, 8))),
-                          iaa.Sometimes(0.8, iaa.Affine(rotate=(-7, 7), shear=(-3, 3))),
-                          iaa.Sometimes(0.8, iaa.Affine(scale=(0.6, 0.6))),
-                iaa.Sometimes(0.8, iaa.Affine(shear=(-3, 3)))], random_order=True)
+                          iaa.Multiply((0.5, 1.2), per_channel=0.2),
+                          iaa.Sometimes(0.5, iaa.Affine(rotate=(-5, 5), shear=(-8, 8))),
+                          iaa.Sometimes(0.5, iaa.Affine(rotate=(-7, 7), shear=(-3, 3))),
+                          iaa.Sometimes(0.5, iaa.Affine(scale = {"x": (0.4, 1.2),"y": (0.4, 1.2)})),  # scale images to 80-120% of their size, individually per axis
+                          iaa.Sometimes(0.5, iaa.Add((-10, 10), per_channel=0.5)),
+                          iaa.Sometimes(0.5, iaa.Dropout((0.01, 0.1), per_channel=0.5)),
+                          iaa.Sometimes(0.5, iaa.Affine(shear=(-3, 3)))], random_order=True)
             seq_det     = seq.to_deterministic()
 
             for box in plateBoxes:
@@ -254,7 +260,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         numOfPlates = int(sys.argv[1])
         if numOfPlates > 0:
-            plateGen = PlateGenerator(showPlates=True)
+            plateGen = PlateGenerator(showPlates=False)
             plates = plateGen.generatePlates(numOfPlates=numOfPlates)
     else:
         print("You should specify the number of plates")

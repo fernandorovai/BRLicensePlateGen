@@ -8,12 +8,13 @@ from time import time
 import matplotlib.pyplot as plt
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, trainSet=False, lbFile = False):
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, trainSet=True, lbFile = False, includeDash=False):
         plateGen                = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
         self.balanceData        = balanceData
         self.showStatistics     = showStatistics
         self.labelFile          = lbFile
-        self.plates             = plateGen.generatePlates(numOfPlates=numOfPlates, trainSet=trainSet)
+        self.includeDash        = includeDash
+        self.plates             = plateGen.generatePlates(numOfPlates=numOfPlates, trainSet=trainSet, includeDash=includeDash)
         self.classes            = { "A": 1, "B": 2, "C":  3,  "D": 4, "E": 5, "F": 6,
                                     "G": 7, "H": 8, "I1": 9,  "J":10, "K":11, "L":12,
                                     "M":13, "N":14, "O0":15,  "P":16, "Q":17, "R":18,
@@ -134,15 +135,16 @@ class DatasetCreator:
 
 if __name__ == '__main__':
 
-    path         = os.getcwd()
-    numOfPlates  = int(input("How many plates do you want to generate? \nNumber of plates:"))
-    model        = int(input("0 - Tensorflow \n1 - YOLOV2\nWhat is the model? (e.g: 0 or 1): "))
-    output       = input("What is the set name? ")
+    path          = os.getcwd()
+    numOfPlates   = int(input("How many plates do you want to generate? \nNumber of plates:"))
+    model         = int(input("0 - Tensorflow \n1 - YOLOV2\nWhat is the model? (e.g: 0 or 1): "))
+    output        = input("What is the set name? ")
     trainSet      = input("Is it a train set(y) or test set(n)? (y/n): ")
-    augmentation = input("Want to augment the dataset? (y/n): ")
-    balanced     = input("Want to balance the data? (You may have images with few annotations) (y/n): ")
-    showPlates   = input("Want to see generated plates? (y/n): ")
-    lblFile      = input("Want to generate the label pbtxt file? (y/n): ")
+    augmentation  = input("Want to augment the dataset? (y/n): ")
+    balanced      = input("Want to balance the data? (You may have images with few annotations) (y/n): ")
+    dash          = input("Want to include the dash between letters and numbers? (y/n): ")
+    showPlates    = input("Want to see generated plates? (y/n): ")
+    lblFile       = input("Want to generate the label pbtxt file? (y/n): ")
 
     if int(numOfPlates) > 0 and (model == 0 or model == 1) and output != "":
         output = os.path.join(path, output)
@@ -162,20 +164,27 @@ if __name__ == '__main__':
         if lblFile == ('y' or 'Y'): lblFile = True
         else: lblFile = False
 
+        if dash == ('y' or 'Y'): dash = True
+        else: dash = False
+
+
+        if not trainSet:
+            output = output + 'Test'
+
         # Create train set
-        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, trainSet=False, augmentation=augmentation, lbFile=lblFile)
+        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, trainSet=trainSet, augmentation=augmentation, lbFile=lblFile, includeDash=dash)
 
         if   model == 0:datasetCreator.createTensorFlowDataset(output)
         elif model == 1:datasetCreator.createYOLOV2Dataset()
         else: print("Model not found")
 
-        if trainSet:
-            output = output + 'Test'
-            datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, trainSet=True, lbFile=lblFile)
-
-            if model == 0:datasetCreator.createTensorFlowDataset(output)
-            elif model == 1:datasetCreator.createYOLOV2Dataset()
-            else:print("Model not found")
+        # if trainSet:
+        #     output = output + 'Test'
+        #     datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, augmentation=augmentation, trainSet=True, lbFile=lblFile, includeDash=dash)
+        #
+        #     if model == 0:datasetCreator.createTensorFlowDataset(output)
+        #     elif model == 1:datasetCreator.createYOLOV2Dataset()
+        #     else:print("Model not found")
 
     else:
         print("Sorry, you chose something that does not match the requirements!")

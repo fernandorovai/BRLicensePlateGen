@@ -8,7 +8,7 @@ from time import time
 from imgBBoxExtractor import RealPlateExtractor
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=True, augmentation=True, trainSet=True, lbFile = False, includeDash=False, realData=False):
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=False, augmentation=True, trainSet=True, lbFile = False, includeDash=False, realData=False):
         if realData:
             plateGen = RealPlateExtractor()
             self.plates = plateGen.extractBoxesFromImage(showPlates)

@@ -12,7 +12,7 @@ import imgaug as ia
 import numpy as np
 
 class PlateGenerator:
-    def __init__(self, showPlates=True, showStatistics=True, augmentation=True):
+    def __init__(self, showPlates=True, showStatistics=False, augmentation=True):
         self.dataFolder      = 'data'
         self.letters         = ["A", "B", "C", "D", "E", "F", "G",
                                 "H", "I", "J", "K", "L", "M", "N",

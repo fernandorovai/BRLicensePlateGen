@@ -182,7 +182,7 @@ if __name__ == '__main__':
             output = output + 'Test'
 
         # Create train set
-        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, trainSet=False, augmentation=augmentation, lbFile=lblFile, realData=realData)
+        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, trainSet=trainSet, augmentation=augmentation, lbFile=lblFile, realData=realData)
 
         if   model == 0:datasetCreator.createTensorFlowDataset(output)
         elif model == 1:datasetCreator.createYOLOV2Dataset()

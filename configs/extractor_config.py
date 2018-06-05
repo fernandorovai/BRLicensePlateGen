@@ -1,6 +1,7 @@
 CONFIGS = dict(
     trainImageDir       = 'images100',
     imageType           = '.jpg',
+    numOfChars          =  7,
     maxCharHeightFactor =  0.8,
     minCharHeightFactor =  0.4,
     maxCharWidthFactor  = 0.15,

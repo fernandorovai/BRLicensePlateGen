@@ -13,6 +13,7 @@ maxCharHeight        = extractorCfg.CONFIGS['maxCharHeightFactor']
 minCharHeight        = extractorCfg.CONFIGS['minCharHeightFactor']
 pathToTrainImageDir  = extractorCfg.CONFIGS['trainImageDir']
 imageType            = extractorCfg.CONFIGS['imageType']
+numOfChars           = extractorCfg.CONFIGS['numOfChars']
 
 class RealPlateExtractor:
 
@@ -94,11 +95,16 @@ class RealPlateExtractor:
         for image in trainImages:
             basename = (os.path.basename(image).split("."))[0]
             basename = list(basename)
-            basename.remove("-")
+            if "-" in basename:
+                basename.remove("-")
 
             loadedImg = cv2.imread(image)
             loadedImg = cv2.cvtColor(loadedImg, cv2.COLOR_BGR2RGB)
             boxes = self.segmentChars(loadedImg, basename)
+
+            if len(boxes) != numOfChars:
+                continue
+
             plates.append({"plateIdx": imgId, "plateImg": Image.fromarray(loadedImg), "plateBoxes": boxes})
             imgId += 1
 

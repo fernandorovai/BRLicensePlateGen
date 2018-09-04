@@ -36,7 +36,7 @@ class PlateGenerator:
         self.initialHeight   = 55
         self.widthRef        = 30
         self.heightRef       = 55
-
+        self.resizeScale     = (40,108)
         self.showStatistics  = showStatistics
         self.visualizePlates = showPlates
         self.augmentation    = augmentation
@@ -129,7 +129,7 @@ class PlateGenerator:
         plt.imshow(image)
         plt.show()
 
-    def generatePlates(self, numOfPlates, trainSet=True, includeDash=False):
+    def generatePlates(self, numOfPlates, trainSet=True, includeDash=False, resize=False):
         print("------------------------------------------------------------------")
         print("Generating Artificial Data...")
         startTime = time.time()
@@ -140,6 +140,7 @@ class PlateGenerator:
             finalImg    = self.generateLetters(plateSample)
             finalImg    = self.generateDash(finalImg, includeDash)
             finalImg    = self.generateNumbers(finalImg)
+
             plates.append({"plateIdx": idx, "plateImg": finalImg, "plateBoxes": self.bboxes})
 
             # Visualize plate
@@ -153,9 +154,10 @@ class PlateGenerator:
         if self.showStatistics:
             self.visualizeStatistics()
 
+
         # Perform data augmentation
         if self.augmentation:
-            if trainSet: plates = self.augmentImgs(plates)
+            if trainSet: plates = self.augmentImgs(plates, resize=resize)
             else:        plates = self.augmentImgsTest(plates)
 
         elapsed = round((time.time() - startTime),3)
@@ -181,8 +183,8 @@ class PlateGenerator:
                 iaa.ContrastNormalization((0.75, 2.0)),
                 iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.2 * 255), per_channel=0.6),
                 iaa.Multiply((0.8, 1.2), per_channel=0.2),
-                iaa.Sometimes(0.8, iaa.Affine(rotate=(-5, 7), shear=(-2, 10))),
-                iaa.Sometimes(0.8, iaa.Affine(shear=(-3, 3)))], random_order=True)
+                iaa.Sometimes(0.8, iaa.Affine(rotate=(-2, 12), shear=(-2, 15))),
+                iaa.Sometimes(0.8, iaa.Affine(shear=(-3, 9)))], random_order=True)
             seq_det = seq.to_deterministic()
 
             for box in plateBoxes:
@@ -208,39 +210,46 @@ class PlateGenerator:
         return augPlates
 
 
-    def augmentImgs(self, plates):
+    def augmentImgs(self, plates, resize=False):
         augPlates = []
         for plate in plates:
             plateIdx    = plate["plateIdx"]
             plateImg    = np.asarray(plate['plateImg'])
             plateBoxes  = plate['plateBoxes']
             bbs         = []
-            seq         = iaa.Sequential([
-                          iaa.Sometimes(0.5,
-                              iaa.OneOf([iaa.GaussianBlur((0, 3.0)), # blur images with a sigma between 0 and 3.0
-                                         iaa.AverageBlur(k=(2, 7)), # blur image using local means with kernel sizes between 2 and 7
-                                         iaa.MedianBlur(k=(3, 11)), # blur image using local medians with kernel sizes between 2 and 7
-                                        ])),
-                          iaa.ContrastNormalization((0.75, 1.9)),
-                          iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.1 * 255), per_channel=0.6),
-                          iaa.Multiply((0.5, 1.2), per_channel=0.2),
-                          iaa.Sometimes(0.5, iaa.Affine(rotate=(-5, 5), shear=(-8, 8))),
-                          iaa.Sometimes(0.5, iaa.Affine(rotate=(-7, 7), shear=(-3, 3))),
-                          iaa.Sometimes(0.5, iaa.Affine(scale = {"x": (0.4, 1.2),"y": (0.4, 1.2)})),  # scale images to 80-120% of their size, individually per axis
-                          iaa.Sometimes(0.5, iaa.Add((-10, 10), per_channel=0.5)),
-                          iaa.Sometimes(0.5, iaa.Dropout((0.01, 0.1), per_channel=0.5)),
-                          iaa.Sometimes(0.5, iaa.Affine(shear=(-3, 3)))], random_order=True)
-            seq_det     = seq.to_deterministic()
 
             for box in plateBoxes:
                 bbs.append(ia.BoundingBox(box[0], box[1], box[2], box[3]))
+            bboxAug = ia.BoundingBoxesOnImage(bbs, shape=plateImg.shape)
 
-            bbsOnImage  = ia.BoundingBoxesOnImage(bbs,shape=plateImg.shape)
+            if resize:
+                # Rescale image and bounding boxes
+                plateImg = ia.imresize_single_image(plateImg, self.resizeScale)
+                bboxAug = bboxAug.on(plateImg)
+
+            seq    = iaa.Sequential([
+                      iaa.Sometimes(0.6,
+                          iaa.OneOf([iaa.GaussianBlur((0, 0.8)), # blur images with a sigma between 0 and 1.0
+                                     iaa.AverageBlur(k=(1, 3)), # blur image using local means with kernel sizes between 2 and 5
+                                     iaa.MedianBlur(k=(1, 3)), # blur image using local medians with kernel sizes between 3 and 5
+                                    ])),
+                      iaa.ContrastNormalization((0.5, 3)),
+                      iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.01 * 255), per_channel=0.2),
+                      iaa.Multiply((0.5, 0.8), per_channel=0.2),
+                      iaa.Sometimes(0.6, iaa.Affine(rotate=(-5, 5), shear=(-8, 8))),
+                      # iaa.Sometimes(0.5, iaa.Affine(rotate=(-7, 7), shear=(-3, 3))),
+                      # iaa.Sometimes(0.5, iaa.Affine(scale = {"x": (0.4, 1.2),"y": (0.4, 1.2)})),  # scale images to 80-120% of their size, individually per axis
+                      iaa.Sometimes(0.7, iaa.Add((-3, 3), per_channel=0.2)),
+                      iaa.Sometimes(0.5, iaa.Dropout((0.01, 0.05), per_channel=0.5)),
+                      iaa.Sometimes(0.3, iaa.Affine(shear=(-3, 3)))], random_order=True)
+            seq_det = seq.to_deterministic()
+
+
             imageAug    = seq_det.augment_images([plateImg])[0]
-            bboxAug     = seq_det.augment_bounding_boxes([bbsOnImage])[0]
+            bboxAug     = seq_det.augment_bounding_boxes([bboxAug])[0]
             bboxAug     = bboxAug.remove_out_of_image().cut_out_of_image()
 
-            finalImg    = Image.fromarray(imageAug)
+            finalImg         = Image.fromarray(imageAug)
             bboxAugFormatted = []
             for idx, box in enumerate(bboxAug.bounding_boxes):
                 bboxAugFormatted.append((box.x1, box.y1, box.x2, box.y2, plateBoxes[idx][4]))

@@ -6,15 +6,19 @@ from plateGenerator import PlateGenerator
 from TFRecordWriter import TFRecordWriter, TFExample
 from time import time
 from imgBBoxExtractor import RealPlateExtractor
+import numpy as np
 
 class DatasetCreator:
-    def __init__(self, numOfPlates, showPlates=False, balanceData=False, showStatistics=False, augmentation=True, trainSet=True, lbFile = False, includeDash=False, realData=False):
+    def __init__(self, numOfPlates, showPlates=False, balanceData=False,
+                 showStatistics=False, augmentation=True, trainSet=True,
+                 lbFile = False, includeDash=False, realData=False,
+                 resize=False, model=0, split=True, outputPath=os.getcwd()):
         if realData:
             plateGen = RealPlateExtractor()
             self.plates = plateGen.extractBoxesFromImage(showPlates)
         else:
             plateGen    = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
-            self.plates = plateGen.generatePlates(numOfPlates=numOfPlates, trainSet=trainSet, includeDash=includeDash)
+            self.plates = plateGen.generatePlates(numOfPlates=numOfPlates, trainSet=trainSet, includeDash=includeDash, resize=resize)
 
         self.balanceData        = balanceData
         self.showStatistics     = showStatistics
@@ -30,20 +34,37 @@ class DatasetCreator:
         self.maxCharOccurrence = min(val for val in statistics.values() if val > 0)
         self.occurrenceControl = statistics.fromkeys(statistics, 1)
 
+        if model == 0:
+            if split:
+                train, validation = np.split(self.plates, [int(.8 * len(self.plates))])
+                tfRecordTrainFilename = "%s_train.tfrecord" % output
+                tfRecordTestFilename = "%s_test.tfrecord" % output
+
+                self.createTensorFlowDataset(train, tfRecordTrainFilename)
+                self.createTensorFlowDataset(validation, tfRecordTestFilename)
+            else:
+                tfRecordTrainFilename = "%s_train.tfrecord" % output
+                self.createTensorFlowDataset(self.plates, tfRecordTrainFilename)
+
+        elif model == 1:
+            self.createYOLOV2Dataset()
+        else:
+            print("Model not found")
+
+
     def createYOLOV2Dataset(self):
         # To be defined
         print("This feature is under development")
 
-    def createTensorFlowDataset(self, tfRecordPath):
-        tfRecordFilename   = "%s.tfrecord" % output
+    def createTensorFlowDataset(self, plates, tfRecordFilename):
         tfLabelMapFilename = "%s_label_map.pbtxt" % output
         startTime = time()
         print("------------------------------------------------------------------")
-        print("Generating TensorFlow Dataset with (%d) license plates" % len(self.plates))
+        print("Generating TensorFlow Dataset with (%d) license plates" % len(plates))
         tfRecordGen = TFRecordWriter(tfRecordFilename)
         diffClasses = []
 
-        for plate in self.plates:
+        for plate in plates:
             plateIdx         = plate['plateIdx']
             plateImg         = plate['plateImg']
             plateBoxes       = plate['plateBoxes']
@@ -121,7 +142,7 @@ class DatasetCreator:
 
         tfRecordGen.closeTfStream()
         elapsed = round((time() - startTime),3)
-        print("TensorFlow dataset created successfully! - %s - Process took %s seconds" % (str(tfRecordPath), str(elapsed)))
+        print("TensorFlow dataset created successfully! - %s - Process took %s seconds" % (str(tfRecordFilename), str(elapsed)))
         if self.showStatistics:
             self.visualizeStatistics()
 
@@ -139,18 +160,20 @@ class DatasetCreator:
 
 
 if __name__ == '__main__':
-    numOfPlates, model, balanced, dash, showPlates, augmentation, trainSet, output = 0, 0, False, False, False, False, True, ""
+    numOfPlates, model, balanced, dash, showPlates, augmentation, trainSet, output, split = 0, 0, False, False, False, False, True, "", True
 
     path             = os.getcwd()
     realData         = input("Want to use real data? (y/n):")
     output           = input("What is the set name? ")
     model            = int(input("0 - Tensorflow \n1 - YOLOV2\nWhat is the model? (e.g: 0 or 1): "))
+    resize           = input("Want to resize the image? (y/n): ")
     if realData == ('n' or 'N'):
         numOfPlates  = int(input("How many plates do you want to generate? \nNumber of plates:"))
+        split        = input("Wnat to split dataset into train-test? (y/n): ")
         augmentation = input("Want to augment the dataset? (y/n): ")
         dash         = input("Want to include the dash between letters and numbers? (y/n): ")
         balanced     = input("Want to balance the data? (You may have images with few annotations) (y/n): ")
-        trainSet     = input("Is it a train set(y) or test set(n)? (y/n): ")
+        # trainSet     = input("Is it a train set(y) or test set(n)? (y/n): ")
     lblFile          = input("Want to generate the label pbtxt file? (y/n): ")
     showPlates       = input("Want to see generated plates? (y/n): ")
 
@@ -169,8 +192,8 @@ if __name__ == '__main__':
         if augmentation == ('y' or 'Y'): augmentation = True
         else: augmentation = False
 
-        if trainSet == ('y' or 'Y'): trainSet = True
-        else: trainSet = False
+        # if trainSet == ('y' or 'Y'): trainSet = True
+        # else: trainSet = False
 
         if lblFile == ('y' or 'Y'): lblFile = True
         else: lblFile = False
@@ -178,14 +201,19 @@ if __name__ == '__main__':
         if dash == ('y' or 'Y'): dash = True
         else: dash = False
 
-        if not trainSet:
-            output = output + 'Test'
+        if resize == ('y' or 'Y'): resize = True
+        else: resize = False
+
+        if split == ('y' or 'Y'): split = True
+        else: split = False
+
+        # if not trainSet:
+        #     output = output + 'Test'
 
         # Create train set
-        datasetCreator = DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced, trainSet=trainSet, augmentation=augmentation, lbFile=lblFile, realData=realData)
-
-        if   model == 0:datasetCreator.createTensorFlowDataset(output)
-        elif model == 1:datasetCreator.createYOLOV2Dataset()
-        else: print("Model not found")
+        DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced,
+                        trainSet=trainSet, augmentation=augmentation, lbFile=lblFile,
+                        realData=realData, resize=resize, model=model, split=split,
+                        outputPath=output)
     else:
         print("Sorry, you chose something that does not match the requirements!")

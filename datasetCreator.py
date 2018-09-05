@@ -12,7 +12,9 @@ class DatasetCreator:
     def __init__(self, numOfPlates, showPlates=False, balanceData=False,
                  showStatistics=False, augmentation=True, trainSet=True,
                  lbFile = False, includeDash=False, realData=False,
-                 resize=False, model=0, split=True, outputPath=os.getcwd()):
+                 resize=False, model=0, split=True, outputPath=os.getcwd(),
+                 genBackgroud=False):
+
         if realData:
             plateGen = RealPlateExtractor()
             self.plates = plateGen.extractBoxesFromImage(showPlates)
@@ -20,6 +22,7 @@ class DatasetCreator:
             plateGen    = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
             self.plates = plateGen.generatePlates(numOfPlates=numOfPlates, trainSet=trainSet, includeDash=includeDash, resize=resize)
 
+        self.genBackground      = genBackgroud
         self.balanceData        = balanceData
         self.showStatistics     = showStatistics
         self.labelFile          = lbFile
@@ -30,9 +33,10 @@ class DatasetCreator:
                                     "S":19, "T":20, "U": 21,  "V":22, "Y":23, "W":24,
                                     "X":25, "Z":26, "2": 27,  "3":28, "4":29, "5":30,
                                     "6":31, "7":32, "8": 33,  "9":34, "-":35}
-        statistics = plateGen.getStatistics()
+        statistics             = plateGen.getStatistics()
         self.maxCharOccurrence = min(val for val in statistics.values() if val > 0)
         self.occurrenceControl = statistics.fromkeys(statistics, 1)
+
 
         if model == 0:
             if split:

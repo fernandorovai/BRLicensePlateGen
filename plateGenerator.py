@@ -12,40 +12,43 @@ import imgaug as ia
 import numpy as np
 
 class PlateGenerator:
-    def __init__(self, showPlates=True, showStatistics=False, augmentation=True, bgInsertion=True):
-        self.dataFolder      = 'data'
-        self.letters         = ["A", "B", "C", "D", "E", "F", "G",
-                                "H", "I", "J", "K", "L", "M", "N",
-                                "O", "P", "Q", "R", "S", "T", "U",
-                                "V", "Y", "W", "X", "Z"]
+    def __init__(self, showPlates=True, showStatistics=False, augmentation=True, bgInsertion=True, contourOnly=True):
+        self.dataFolder       = 'data'
+        self.letters          = ["A", "B", "C", "D", "E", "F", "G",
+                                 "H", "I", "J", "K", "L", "M", "N",
+                                 "O", "P", "Q", "R", "S", "T", "U",
+                                 "V", "Y", "W", "X", "Z"]
 
-        self.statistics      = collections.OrderedDict([("A",0), ("B",0), ("C",0), ("D",0), ("E",0),
-                                                        ("F",0), ("G",0), ("H",0), ("I",0), ("J",0),
-                                                        ("K",0), ("L",0), ("M",0), ("N",0), ("O",0),
-                                                        ("P",0), ("Q",0), ("R",0), ("S",0), ("T",0),
-                                                        ("U",0), ("V",0), ("Y",0), ("W",0), ("X",0),
-                                                        ("Z",0), ("0",0), ("1",0), ("2",0), ("3",0),
-                                                        ("4",0), ("5",0), ("6",0), ("7",0), ("8",0),
-                                                        ("9",0), ("-",0)])
-        self.numbers          = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-        self.bboxes           = []
-        self.nLetters         = 3
-        self.nNumbers         = 4
-        self.charPadding      = 0
-        self.initialWidth     = 30
-        self.initialHeight    = 55
-        self.widthRef         = 30
-        self.heightRef        = 55
-        self.resizeScale      = (40,108)
-        self.resizeBackground = (800, 600)
-        self.visualizePlates  = showPlates
-        self.bgInsertion      = bgInsertion
-        self.augmentation     = augmentation
-        self.showStatistics   = showStatistics
-        self.plateSample      = os.path.join(self.dataFolder, 'plateSample01.jpg')
-        self.plateIm          = Image.open(self.plateSample)
-        self.bgFolder         = '../flowers/'
-        self.bgFiles          = []
+        self.statistics       = collections.OrderedDict([("A",0), ("B",0), ("C",0), ("D",0), ("E",0),
+                                                         ("F",0), ("G",0), ("H",0), ("I",0), ("J",0),
+                                                         ("K",0), ("L",0), ("M",0), ("N",0), ("O",0),
+                                                         ("P",0), ("Q",0), ("R",0), ("S",0), ("T",0),
+                                                         ("U",0), ("V",0), ("Y",0), ("W",0), ("X",0),
+                                                         ("Z",0), ("0",0), ("1",0), ("2",0), ("3",0),
+                                                         ("4",0), ("5",0), ("6",0), ("7",0), ("8",0),
+                                                         ("9",0), ("-",0), ("plate",0)])
+        self.bboxes            = []
+        self.bgFiles           = []
+        self.numbers           = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+        self.nLetters          = 3
+        self.nNumbers          = 4
+        self.charPadding       = 0
+        self.initialWidth      = 30
+        self.initialHeight     = 55
+        self.widthRef          = 30
+        self.heightRef         = 55
+        self.plateSize         = (40, 108)
+        self.resizeBackground  = (800, 600)
+        self.resizePlateFactor = 'random'
+        self.centerPlate       = False
+        self.contourOnly       = contourOnly
+        self.visualizePlates   = showPlates
+        self.bgInsertion       = bgInsertion
+        self.augmentation      = augmentation
+        self.bgFolder          = '../flowers/'
+        self.showStatistics    = showStatistics
+        self.plateSample       = os.path.join(self.dataFolder, 'plateSample01.jpg')
+        self.plateIm           = Image.open(self.plateSample)
         self.resetReferences()
 
         # get possible background images
@@ -73,8 +76,10 @@ class PlateGenerator:
             char = Image.open(os.path.join(self.dataFolder, "%s.png" % str(file)))
             charW, charH = char.size
 
-            # Append box according to widthRef + charW
-            self.bboxes.append(self.generateBox(charW, charH, str(randomChar)))
+            annotations = self.generateBox(charW, charH, str(randomChar))
+            if not self.contourOnly:
+                # Append box according to widthRef + charW
+                self.bboxes.append(annotations)
 
             image.paste(char, (self.widthRef, self.heightRef), char)
             self.widthRef += charW + self.charPadding
@@ -104,8 +109,10 @@ class PlateGenerator:
             number = Image.open(os.path.join(self.dataFolder, "%s.png" % str(file)))
             numberW, numberH = number.size
 
-            # Append box according to widthRef + numberW
-            self.bboxes.append(self.generateBox(numberW, numberH, randomNum))
+            annotations = self.generateBox(numberW, numberH, randomNum)
+            if not self.contourOnly:
+                # Append box according to widthRef + numberW
+                self.bboxes.append(annotations)
 
             image.paste(number, (self.widthRef, self.heightRef), number)
             self.widthRef += numberW + self.charPadding
@@ -119,7 +126,7 @@ class PlateGenerator:
         dash = Image.open(os.path.join(self.dataFolder, "%s.png" % str("-")))
         dashW, dashH = dash.size
 
-        if includeDash:
+        if includeDash and not self.contourOnly:
             # Append box according to widthRef + numberW
             self.bboxes.append(self.generateBox(dashW, dashH, "-"))
 
@@ -166,14 +173,18 @@ class PlateGenerator:
 
                 bgW, bgH = bgImg.size
                 plateW, plateH = img.size
-                offset = ((bgW - plateW) // 2, (bgH - plateH) // 2)
+                offset = (int((bgW - plateW) * random.uniform(0.0, 1.0)), int((bgH - plateH) * random.uniform(0, 1.0)))
+
+                if self.centerPlate:
+                    offset = ((bgW - plateW) // 2, (bgH - plateH) // 2)
 
                 for box in boxes:
+                    cls  = box[4]
+
                     xMin = box[0] + offset[0]
                     yMin = box[1] + offset[1]
                     xMax = box[2] + offset[0]
                     yMax = box[3] + offset[1]
-                    cls  = box[4]
                     augBoxes.append((xMin, yMin, xMax, yMax, cls))
                 boxes = augBoxes
                 bgImg.paste(img, offset)
@@ -250,7 +261,6 @@ class PlateGenerator:
 
 
     def augmentImg(self, plate, resize=False):
-        augPlates = []
         # for plate in plates:
         plateImg    = np.asarray(plate['plateImg'])
         plateBoxes  = plate['plateBoxes']
@@ -261,22 +271,28 @@ class PlateGenerator:
         bboxAug = ia.BoundingBoxesOnImage(bbs, shape=plateImg.shape)
 
         if resize:
+            if self.resizePlateFactor == 'random':
+                resizeFactorW = round(random.uniform(0.5,1.5),1)
+
+                ratio = self.plateSize[0] / self.plateSize[1]
+                newWidth  = resizeFactorW*self.plateSize[0]
+                newHeight = newWidth/ratio
+                self.plateSize = (int(newWidth), int(newHeight))
+
             # Rescale image and bounding boxes
-            plateImg = ia.imresize_single_image(plateImg, self.resizeScale)
+            plateImg = ia.imresize_single_image(plateImg, self.plateSize)
             bboxAug = bboxAug.on(plateImg)
 
         seq    = iaa.Sequential([
             iaa.Sometimes(0.6,
-                          iaa.OneOf([iaa.GaussianBlur((0, 0.8)), # blur images with a sigma between 0 and 1.0
-                                     iaa.AverageBlur(k=(1, 3)), # blur image using local means with kernel sizes between 2 and 5
-                                     iaa.MedianBlur(k=(1, 3)), # blur image using local medians with kernel sizes between 3 and 5
+                          iaa.OneOf([iaa.GaussianBlur((0, 0.8)) # blur images with a sigma between 0 and 1.0
+                                     # iaa.AverageBlur(k=(1, 3)), # blur image using local means with kernel sizes between 2 and 5
+                                     # iaa.MedianBlur(k=(1, 3)), # blur image using local medians with kernel sizes between 3 and 5
                                      ])),
             iaa.ContrastNormalization((0.5, 3)),
             iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.01 * 255), per_channel=0.2),
             iaa.Multiply((0.5, 0.8), per_channel=0.2),
             iaa.Sometimes(0.6, iaa.Affine(rotate=(-5, 5), shear=(-8, 8))),
-            # iaa.Sometimes(0.5, iaa.Affine(rotate=(-7, 7), shear=(-3, 3))),
-            # iaa.Sometimes(0.5, iaa.Affine(scale = {"x": (0.4, 1.2),"y": (0.4, 1.2)})),  # scale images to 80-120% of their size, individually per axis
             iaa.Sometimes(0.7, iaa.Add((-3, 3), per_channel=0.2)),
             iaa.Sometimes(0.5, iaa.Dropout((0.01, 0.05), per_channel=0.5)),
             iaa.Sometimes(0.3, iaa.Affine(shear=(-3, 3)))], random_order=True)
@@ -287,7 +303,6 @@ class PlateGenerator:
         bboxAug     = seq_det.augment_bounding_boxes([bboxAug])[0]
         # bboxAug     = bboxAug.remove_out_of_image().cut_out_of_image()
 
-        finalImg         = Image.fromarray(imageAug)
         bboxAugFormatted = []
         for idx, box in enumerate(bboxAug.bounding_boxes):
             bboxAugFormatted.append((box.x1, box.y1, box.x2, box.y2, plateBoxes[idx][4]))
@@ -306,6 +321,3 @@ if __name__ == '__main__':
             plates = plateGen.generatePlates(numOfPlates=numOfPlates)
     else:
         print("You should specify the number of plates")
-
-
-

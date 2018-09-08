@@ -13,26 +13,29 @@ class DatasetCreator:
                  showStatistics=False, augmentation=True, trainSet=True,
                  lbFile = False, includeDash=False, realData=False,
                  resize=False, model=0, split=True, outputPath=os.getcwd(),
-                 genBackgroud=False):
+                 bgInsertion=False, contourOnly=True):
 
         if realData:
             plateGen = RealPlateExtractor()
             self.plates = plateGen.extractBoxesFromImage(showPlates)
         else:
-            plateGen    = PlateGenerator(showPlates=showPlates, augmentation=augmentation)
+            plateGen    = PlateGenerator(showPlates=showPlates, augmentation=augmentation, bgInsertion=bgInsertion)
             self.plates = plateGen.generatePlates(numOfPlates=numOfPlates, trainSet=trainSet, includeDash=includeDash, resize=resize)
 
-        self.genBackground      = genBackgroud
         self.balanceData        = balanceData
         self.showStatistics     = showStatistics
         self.labelFile          = lbFile
+        self.contourOnly        = contourOnly
         self.includeDash        = includeDash
-        self.classes            = { "A": 1, "B": 2, "C":  3,  "D": 4, "E": 5, "F": 6,
-                                    "G": 7, "H": 8, "I1": 9,  "J":10, "K":11, "L":12,
-                                    "M":13, "N":14, "O0":15,  "P":16, "Q":17, "R":18,
-                                    "S":19, "T":20, "U": 21,  "V":22, "Y":23, "W":24,
-                                    "X":25, "Z":26, "2": 27,  "3":28, "4":29, "5":30,
-                                    "6":31, "7":32, "8": 33,  "9":34, "-":35}
+        self.classes = {"plate": 1}
+        if not self.contourOnly:
+            self.classes            = { "A": 1, "B": 2, "C":  3,  "D": 4, "E": 5, "F": 6,
+                                        "G": 7, "H": 8, "I1": 9,  "J":10, "K":11, "L":12,
+                                        "M":13, "N":14, "O0":15,  "P":16, "Q":17, "R":18,
+                                        "S":19, "T":20, "U": 21,  "V":22, "Y":23, "W":24,
+                                        "X":25, "Z":26, "2": 27,  "3":28, "4":29, "5":30,
+                                        "6":31, "7":32, "8": 33,  "9":34, "-":35}
+
         statistics             = plateGen.getStatistics()
         self.maxCharOccurrence = min(val for val in statistics.values() if val > 0)
         self.occurrenceControl = statistics.fromkeys(statistics, 1)
@@ -68,7 +71,7 @@ class DatasetCreator:
         tfRecordGen = TFRecordWriter(tfRecordFilename)
         diffClasses = []
 
-        for plate in plates:
+        for idx, plate in enumerate(plates):
             plateIdx         = plate['plateIdx']
             plateImg         = plate['plateImg']
             plateBoxes       = plate['plateBoxes']
@@ -94,7 +97,9 @@ class DatasetCreator:
                 xMax = box[2]
                 yMax = box[3]
                 char = box[4]
-                groundTruth += str(char)
+
+                if not self.contourOnly:
+                    groundTruth += str(char)
 
                 # increment occurrence counter
                 self.occurrenceControl[str(char)] +=1
@@ -119,6 +124,10 @@ class DatasetCreator:
             # Avoid empty plates
             if len(classes) == 0:
                 continue
+
+
+            if self.contourOnly:
+                groundTruth = "plate_%s" % (str(idx))
 
             # Append data to TFRecord
             tfRecordExample                  = TFExample()
@@ -164,7 +173,9 @@ class DatasetCreator:
 
 
 if __name__ == '__main__':
-    numOfPlates, model, balanced, dash, showPlates, augmentation, trainSet, output, split = 0, 0, False, False, False, False, True, "", True
+    numOfPlates, model, balanced, dash, showPlates, \
+    augmentation, trainSet, output, split, bgInsertion, \
+    contourOnly = 0, 0, False, False, False, False, True, "", False, True, True
 
     path             = os.getcwd()
     realData         = input("Want to use real data? (y/n):")
@@ -173,7 +184,8 @@ if __name__ == '__main__':
     resize           = input("Want to resize the image? (y/n): ")
     if realData == ('n' or 'N'):
         numOfPlates  = int(input("How many plates do you want to generate? \nNumber of plates:"))
-        split        = input("Wnat to split dataset into train-test? (y/n): ")
+        split        = input("Want to split dataset into train-test? (y/n): ")
+        bgInsertion  = input("Want to add a random background? (y/n): ")
         augmentation = input("Want to augment the dataset? (y/n): ")
         dash         = input("Want to include the dash between letters and numbers? (y/n): ")
         balanced     = input("Want to balance the data? (You may have images with few annotations) (y/n): ")
@@ -192,6 +204,9 @@ if __name__ == '__main__':
 
         if showPlates == ('y' or 'Y'): showPlates = True
         else: showPlates = False
+
+        if bgInsertion == ('y' or 'Y'): bgInsertion = True
+        else: bgInsertion = False
 
         if augmentation == ('y' or 'Y'): augmentation = True
         else: augmentation = False
@@ -218,6 +233,6 @@ if __name__ == '__main__':
         DatasetCreator(numOfPlates, showPlates=showPlates, balanceData=balanced,
                         trainSet=trainSet, augmentation=augmentation, lbFile=lblFile,
                         realData=realData, resize=resize, model=model, split=split,
-                        outputPath=output)
+                        outputPath=output, contourOnly=contourOnly, bgInsertion=bgInsertion)
     else:
         print("Sorry, you chose something that does not match the requirements!")

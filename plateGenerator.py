@@ -45,7 +45,7 @@ class PlateGenerator:
         self.visualizePlates   = showPlates
         self.bgInsertion       = bgInsertion
         self.augmentation      = augmentation
-        self.bgFolder          = '../flowers/'
+        self.bgFolder          = '../Datasets/motorbikes/'
         self.showStatistics    = showStatistics
         self.plateSample       = os.path.join(self.dataFolder, 'plateSample01.jpg')
         self.plateIm           = Image.open(self.plateSample)
@@ -173,7 +173,7 @@ class PlateGenerator:
 
                 bgW, bgH = bgImg.size
                 plateW, plateH = img.size
-                offset = (int((bgW - plateW) * random.uniform(0.0, 1.0)), int((bgH - plateH) * random.uniform(0, 1.0)))
+                offset = (int((bgW - plateW) * random.uniform(0.1, 1.0)), int((bgH - plateH) * random.uniform(0.1, 1.0)))
 
                 if self.centerPlate:
                     offset = ((bgW - plateW) // 2, (bgH - plateH) // 2)
@@ -277,10 +277,10 @@ class PlateGenerator:
                 ratio = self.plateSize[0] / self.plateSize[1]
                 newWidth  = resizeFactorW*self.plateSize[0]
                 newHeight = newWidth/ratio
-                self.plateSize = (int(newWidth), int(newHeight))
+                plateSize = (int(newWidth), int(newHeight))
 
             # Rescale image and bounding boxes
-            plateImg = ia.imresize_single_image(plateImg, self.plateSize)
+            plateImg = ia.imresize_single_image(plateImg, plateSize)
             bboxAug = bboxAug.on(plateImg)
 
         seq    = iaa.Sequential([
